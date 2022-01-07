@@ -1,0 +1,198 @@
+namespace ca.mcgill.ecse.carshop.model;
+
+use CarShopState.ump;
+use CarShopPersistence.ump;
+
+class CarShop  {
+  1 <@>- 0..1 Business business;
+  1 <@>- 0..1 Owner owner;
+  1 <@>- * Customer customers;
+  1 <@>- 0..5 Technician technicians;
+  1 <@>- 0..5 Garage garages;
+  1 <@>- * BusinessHour hours;
+  1 <@>- * Appointment appointments;
+  1 <@>- * TimeSlot timeSlots;
+  1 <@>- * BookableService bookableServices;
+
+  defaulted Date currentDate=Date.valueOf("2021-01-01");
+  defaulted Time currentTime=Time.valueOf("00:00:00");
+  /**
+	 * Find time, given a startTime and passing the time of duration
+	 * @param startTime
+	 * @param duration   number of minutes
+	 * @return the time after passing time of duration
+	 * @author Junjian Chen
+	 */
+	public Time afterTime(String startTime, int duration) {
+		int hour=(int)Math.floor(duration/60);
+		int minutes=duration%60;
+		String[] startTimeArray=startTime.split(":");
+		int newMinutes=Integer.parseInt(startTimeArray[1])+minutes;
+		int newHour=Integer.parseInt(startTimeArray[0]);
+		if(newMinutes>=60) {
+			newHour=newHour+hour+1;
+			newMinutes-=60;
+		}else {
+			newHour=newHour+hour;
+		}
+		Time time=Time.valueOf(newHour+":"+newMinutes+":00");
+		return time;
+	}
+  	
+  	depend ca.mcgill.ecse.carshop.model.BusinessHour.DayOfWeek;  	
+  	/**
+	 * find the matched day from the input string
+	 * @param type the string indicated the desire day
+	 * @return the desire day
+	 */
+	public DayOfWeek getDayOfWeekFromString(String dayString) {
+		DayOfWeek day= null;
+		switch(dayString) {
+		case "Monday":
+			day = DayOfWeek.Monday;
+			break;
+		case "Tuesday":
+			day = DayOfWeek.Tuesday;
+			break;
+		case "Wednesday" :
+			day = DayOfWeek.Wednesday;
+			break;
+		case "Thursday":
+			day = DayOfWeek.Thursday;
+			break;
+		case "Friday" :
+			day = DayOfWeek.Friday;
+			break;
+		case "Saturday":
+			day = DayOfWeek.Saturday;
+			break;
+		case "Sunday" :
+			day = DayOfWeek.Sunday;
+			break;
+		default:
+			
+		}
+		return day;
+	}
+  	
+	
+	/**
+	 * Find the DayOfWeek of a given date
+	 * @param date
+	 * @return day of week
+	 */
+	public DayOfWeek getWeek(Date date){
+		List<DayOfWeek> l=new ArrayList<DayOfWeek>();
+		l.add(DayOfWeek.Sunday);
+		l.add(DayOfWeek.Monday);
+		l.add(DayOfWeek.Tuesday);
+		l.add(DayOfWeek.Wednesday);
+		l.add(DayOfWeek.Thursday);
+		l.add(DayOfWeek.Friday);
+		l.add(DayOfWeek.Saturday);
+		Calendar cal = Calendar.getInstance();
+		cal.setTime(date);
+		int week_index = cal.get(Calendar.DAY_OF_WEEK) - 1;
+		if(week_index<0){
+			week_index = 0;
+		} 
+		return l.get(week_index);
+	}
+}
+
+class User {
+  abstract;
+  unique username;
+  password;
+}
+
+class Owner {
+  isA User;
+}
+
+class Customer {
+  isA User;
+  defaulted Integer timeNotShow = 0;
+}
+
+class Technician {
+  enum TechnicianType {
+    Tire, Engine, Transmission, Electronics, Fluids
+  }
+  1 -- 0..1 Garage garage;
+  TechnicianType type;
+  isA User;
+}
+
+class Business {
+  name;
+  address;
+  phoneNumber;
+  email;
+    // since there is only one business in this system, the first
+  // 0..1 should be a 1. since this is a directed association, the
+  // first multiplicity is not taken into account. hence, it is 
+  // changed to 0..1 to avoid Umple issuing warning W036
+  // Unmanaged Multiplicity
+  0..1 -> * BusinessHour businessHours;
+  0..1 -> * TimeSlot holidays;
+  0..1 -> * TimeSlot vacations;
+  // association to Owner is not modeled because there is
+  // only one owner and only one business in the system
+}
+
+class BusinessHour {
+  enum DayOfWeek { Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday }
+  DayOfWeek dayOfWeek;
+  Time startTime;
+  Time endTime;
+}
+
+class TimeSlot {
+  Date startDate;
+  Time startTime;
+  Date endDate;
+  Time endTime;
+}
+
+class Garage {
+  0..1 -> * BusinessHour businessHours;
+  1 -- * Service services;
+}
+
+class BookableService {
+  abstract;
+  unique name;
+}
+
+class Service {
+  isA BookableService;
+  int duration;
+}
+
+class ServiceCombo {
+  isA BookableService;
+  * -> 0..1 ComboItem mainService;
+  // the services should be {ordered}; however, since Umple translates every * association
+  // or composition into a list, it is possible to order items in that list given Umple's API
+  1 <@>- 2..* ComboItem services;
+}
+
+class ComboItem {
+  boolean mandatory;
+  * -> 1 Service service;
+}
+
+
+class Appointment {
+	depend java.sql.Date;
+	depend java.sql.Time;
+  * -- 1 Customer customer;
+  * -- 1 BookableService bookableService;
+  1 <@>- * ServiceBooking serviceBookings;
+}
+
+class ServiceBooking {
+  * -- 1 Service service;
+  0..1 -> 1 TimeSlot timeSlot;
+}

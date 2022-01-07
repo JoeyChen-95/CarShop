@@ -1,0 +1,117 @@
+external interface Serializable {}
+
+class CarShop {
+    depend java.io.Serializable;
+    isA Serializable;
+    private static final long serialVersionUID = -2683593616927798000L;
+
+	public void reinitialize() {
+	    User.reinitializeUniqueName(this.getOwner(),this.getCustomers(),this.getTechnicians());
+	    BookableService.reinitializeUniqueService(this.getBookableServices());
+	}
+	
+}
+
+class User{
+	depend java.io.Serializable;
+    isA Serializable;
+    private static final long serialVersionUID =-2683593616927798001L;
+     
+    public static  void reinitializeUniqueName(Owner owner, List<Customer> customers,List<Technician> technicians){
+    	usersByUsername = new HashMap<String, User>();
+    	if(owner!=null){
+    	    usersByUsername.put(owner.getUsername(), owner);
+    	}
+	    for (Customer c : customers) {
+		  usersByUsername.put(c.getUsername(), c);
+	    }
+	    for (Technician t : technicians) {
+		  usersByUsername.put(t.getUsername(), t);
+	    }
+  	}
+}
+
+class Owner {
+  	depend java.io.Serializable;
+  	isA Serializable;
+  	private static final long serialVersionUID = -2683593616927798002L;
+}
+
+class Technician {
+ 	depend java.io.Serializable;
+    isA Serializable;
+     private static final long serialVersionUID = -2683593616927798003L;
+}
+
+class Customer {
+ 	depend java.io.Serializable;
+    isA Serializable;
+     private static final long serialVersionUID = -2683593616927798004L; 
+}
+
+class Business {
+ 	depend java.io.Serializable;
+    isA Serializable;
+    private static final long serialVersionUID = -2683593616927798005L;
+}
+
+class BusinessHour {
+  	depend java.io.Serializable;
+  	isA Serializable;
+    private static final long serialVersionUID = -2683593616927798006L;
+}
+  
+class TimeSlot {
+  	depend java.io.Serializable;
+    isA Serializable;
+    private static final long serialVersionUID = -2683593616927798007L;
+}
+
+class ServiceBooking {
+	depend java.io.Serializable;
+    isA Serializable;
+    private static final long serialVersionUID = -2683593616927798008L;
+}
+
+class BookableService {
+  	depend java.io.Serializable;
+   	isA Serializable;
+   	private static final long serialVersionUID = -2683593616927798009L;
+     
+    public static void reinitializeUniqueService(List< BookableService>  services) {
+		bookableservicesByName = new HashMap<String,  BookableService>();
+		for (BookableService b : services) {
+		   bookableservicesByName.put(b.getName(),b);
+	    }
+	}
+}
+
+class Service {
+  	depend java.io.Serializable;
+    isA Serializable;
+    private static final long serialVersionUID = -2683593616927798010L;
+}
+
+class ServiceCombo {
+ 	depend java.io.Serializable;
+    isA Serializable;
+    private static final long serialVersionUID = -2683593616927798011L;
+}
+
+class ComboItem {
+ 	depend java.io.Serializable;
+    isA Serializable;
+    private static final long serialVersionUID = -2683593616927798012L;
+}
+
+class Appointment {
+	depend java.io.Serializable;
+    isA Serializable;
+    private static final long serialVersionUID = -2683593616927798013L;
+}
+
+class Garage {
+	depend java.io.Serializable;
+    isA Serializable;
+    private static final long serialVersionUID = -2683593616927798014L;
+}

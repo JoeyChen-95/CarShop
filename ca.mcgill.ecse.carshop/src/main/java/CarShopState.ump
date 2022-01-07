@@ -1,0 +1,190 @@
+class Appointment{ 
+  Status{
+  //Off: do not have appointment yet
+    Off{
+    make->BeforeAppDate;
+    }
+   //BeforeAppDate: have already made an appointment, but not on the date
+   //Customer can update date/time/service/cancel at this status
+   BeforeAppDate{
+      cancelAppointment()[!isOnDate()]/{cancelApp();}->Off;
+      OnDate->StartApp;
+      UpdateDateAndTime(Date startDate,List<Time> timeList)[!isOnDate()]/{changeDateAndTime(startDate,timeList);}->BeforeAppDate;
+      UpdateService(Service service, Date startDate, Time startTime)[!isOnDate()&&(isTimeAvailable(service,startDate,startTime))]/{changeSingleServiceAppointment(service,startDate,startTime);}->BeforeAppDate;
+      UpdateServiceComboAppointment(List<Service> serviceList, Date startDate, List<Time> startTimeList)[(!isOnDate())&&(areTimesAvailable(serviceList,startDate,startTimeList))]/{changeComboAppointment(serviceList,startDate,startTimeList);}->BeforeAppDate;
+    }
+    //StartApp:the appointment is on the startDate
+    //Customer can change optional services
+    //Customer cannot cancel the appointment, or change the service if the service is in progress
+    //If customer does not show up, no show record will increase by 1
+ 	StartApp{
+    NotShowUp[!isInProgress()]/{customerNotShow();}->Off;
+      TimeEnd[isInProgress()]/{cancelApp();}->Off;
+      AddOptionalService(Service service, Date startDate, Time startTime)[(isTimeAvailable(service,startDate,startTime)]/{changeServiceAppointment(service,startDate,startTime);}->StartApp;
+    }
+  }
+  //check if current date is on the date of appointment
+  private boolean isOnDate() {
+	  if(this.getServiceBookings().get(0).getTimeSlot().getStartDate().compareTo(carShop.getCurrentDate())==0){
+		  return true;
+	  }else {
+		  return false;
+	  }
+  }
+  //cancel the appointment
+  private void cancelApp() {
+	  this.delete();
+  }
+  //change the date of time of a appointment, depends on its abstract of bookable service
+  private void changeDateAndTime(Date startDate,List<Time> timeList) {
+	 if(this.getBookableService() instanceof Service) {
+		 Service s=(Service)this.getBookableService();
+		 TimeSlot ts = this.getServiceBookings().get(0).getTimeSlot();
+		 if(startDate!=null) {
+			ts.setStartDate(startDate);
+			ts.setEndDate(startDate); 
+		 }
+		 if(timeList.size()!=0) {
+			ts.setStartTime(timeList.get(0));
+			ts.setEndTime(carShop.afterTime(timeList.get(0).toString(), s.getDuration()));
+		 }
+		 
+	 }else {
+		 ServiceCombo sc=(ServiceCombo)this.getBookableService();
+		 for(ServiceBooking sb:this.getServiceBookings()) {
+			 TimeSlot ts=sb.getTimeSlot();
+			 int index=this.getServiceBookings().indexOf(sb);
+			 if(startDate!=null) {
+				 ts.setStartDate(startDate);
+				 ts.setEndDate(startDate); 
+			 }
+			 if(timeList.size()!=0) {
+				 ts.setStartTime(timeList.get(index));
+				 ts.setEndTime(carShop.afterTime(timeList.get(index).toString(), this.getServiceBookings().get(index).getService().getDuration()));
+			 }
+		 }
+	 }
+  }
+  //Only change the service of a single service appointment, also update timeslot correspondingly
+  private void changeService(Service service) {
+	  if(service!=null) {
+    	TimeSlot original = this.getServiceBooking(0).getTimeSlot();
+		  this.setBookableService(service);
+		  original.setEndTime(carShop.afterTime(original.getStartTime().toString(), service.getDuration()));
+	  }
+  }
+  //customer does not show up for the appointment
+    private void customerNotShow() {
+	  this.getCustomer().setTimeNotShow(this.getCustomer().getTimeNotShow()+1);
+	  this.delete();
+  }
+  	//check whether the techician is available of a newservice
+     public boolean isTechinicianAvailable(Service service) {
+	  for(BusinessHour bh:service.getGarage().getBusinessHours()) {
+		  if(bh.getDayOfWeek().equals(carShop.getDayOfWeekFromString(carShop.getCurrentDate().toString()))) {
+			  return true;
+		  }
+	  }
+	   return false;
+   }
+   
+  //Check whether time conflict exists when adding a new service to the appointment
+   private boolean isTimeAvailable(Service service, Date startDate, Time startTime){
+    Time endTime = carShop.afterTime(startTime.toString(), service.getDuration());
+	  
+	  //check whether the time is in the holiday and vacation
+	  for(TimeSlot s:carShop.getBusiness().getHolidays()) {
+		  boolean startOverlap = startDate.compareTo(s.getStartDate())>=0 && startDate.compareTo(s.getEndDate())<=0;
+		  if(startOverlap) return false;
+	  }
+	  for(TimeSlot s:carShop.getBusiness().getVacations()) {
+		  boolean startOverlap = startDate.compareTo(s.getStartDate())>=0 && startDate.compareTo(s.getEndDate())<=0;
+		  if(startOverlap) return false;
+	  }
+	  
+	  //check whether the time is in the opening hour
+	  for(BusinessHour bs : carShop.getBusiness().getBusinessHours()) {
+		  if(bs.getDayOfWeek().equals(carShop.getWeek(startDate))){
+			  if(startTime.before(bs.getStartTime())||endTime.after(bs.getEndTime())) {
+				  return false;
+			  }
+		  }
+	  }
+	  
+	  //check whether is in the garage opening hour
+	  for(BusinessHour bs : carShop.getGarages().get(0).getBusinessHours()) {
+		  if(bs.getDayOfWeek().equals(carShop.getWeek(startDate))){
+			  if(startTime.before(bs.getStartTime())||endTime.after(bs.getEndTime())) {
+				  return false;
+			  }
+		  }
+	  }
+	  
+	  //check whether overlap with other appointment
+	  for(Appointment a : carShop.getAppointments()) {
+		  if(!a.equals(this)) {
+			  for(ServiceBooking s : a.getServiceBookings()) {
+				  if(s.getTimeSlot().getStartDate().equals(startDate) && s.getService().getName().equals(service.getName())) {
+					  boolean startOverlap = startTime.after(s.getTimeSlot().getStartTime()) && startTime.before(s.getTimeSlot().getEndTime());
+						boolean endOverlap = endTime.after(s.getTimeSlot().getStartTime()) && endTime.before(s.getTimeSlot().getEndTime());
+						if(startOverlap||endOverlap) return false;
+				  }
+			  }
+		  }
+	  }
+	  
+	  return true;
+  }
+  	
+  //Check whether time conflict exists when adding a list of new services to the appointment
+  	private boolean areTimesAvailable(List<Service> serviceList, Date startDate, List<Time> startTimeList){
+	   for(int i = 0; i<serviceList.size();i++) {
+		   boolean flag =isTimeAvailable(serviceList.get(i),startDate,startTimeList.get(i));
+		   if(!flag) return false;
+	   }
+	   return true;
+   }	
+  	//Add optional service while in progress
+  	private void changeServiceAppointment(Service service, Date startDate, Time startTime){
+	ServiceCombo sc=(ServiceCombo)this.getBookableService();
+	sc.addService(new ComboItem(false, service, sc));
+    TimeSlot ts=new TimeSlot(startDate, startTime, startDate, this.carShop.afterTime(startTime.toString(), service.getDuration()), carShop);
+    this.addServiceBooking(service, ts);
+  }
+  //Update the optional services(by input a list), start date, start times(by input of a list) of a combo appointment
+  //Or update all of them
+ 	private void changeComboAppointment(List<Service> serviceList, Date startDate, List<Time> startTimeList){
+    ServiceCombo sc=(ServiceCombo)this.getBookableService();
+	//check whether add new optional service
+    if(sc.getServices().size()+1<serviceList.size()) {
+    	Service service = serviceList.get(serviceList.size()-1);
+    	Time startTime = startTimeList.get(startTimeList.size()-1);
+    	sc.addService(new ComboItem(false,service, sc));
+    	TimeSlot ts=new TimeSlot(startDate, startTime, startDate, this.carShop.afterTime(startTime.toString(), service.getDuration()), carShop);
+        this.addServiceBooking(service, ts);
+    }
+	this.changeDateAndTime(startDate, startTimeList);
+  }
+  	//Update the service or start date or start time of a appointment of a single service
+	//Or update all of them
+	private void changeSingleServiceAppointment(Service service, Date startDate, Time startTime) {
+	   this.changeService(service);
+	   List<Time> t=new ArrayList<Time>();
+	   t.add(startTime);
+	   this.changeDateAndTime(startDate, t);
+   }
+   	//check whether the current time is within the appointment timeslot
+   	//e.g. if a app startTime is 10:00 and endTime is 10:20
+   	//currentTime from 10:00(Included!) to 10:20(Included!) will return true
+   	private boolean isInProgress(){
+    Time curTime=this.carShop.getCurrentTime();
+	   for(ServiceBooking sb:this.getServiceBookings()) {
+		   TimeSlot ts=sb.getTimeSlot();
+		   if(curTime.compareTo(ts.getStartTime())>=0&&curTime.compareTo(ts.getEndTime())<=0) {
+			   return true;
+		   }
+	   }
+	   return false;
+  }
+  
+}

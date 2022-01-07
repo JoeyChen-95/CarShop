@@ -1,0 +1,44 @@
+namespace ca.mcgill.ecse.carshop.controller;
+
+class TOServiceCombo{
+name;
+}
+
+class TOComboItem{
+name;
+boolean mandatory;
+}
+
+class TOBusiness {
+    name;
+    address;
+    phoneNumber;
+    email;
+}
+
+class TOService {
+	name;
+}
+
+class TOAppointment {
+	Integer appNum;
+	customerName;
+	bookableServiceName;
+	startDate;
+	startTime;
+	endTime;
+}
+
+class TOUser{
+	username;
+}
+
+class TOBusinessHour{
+	startTime;
+	endTime;
+}
+
+class TOGarageOH{
+	startTime;
+	endTime;
+}
