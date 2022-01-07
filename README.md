@@ -11,4 +11,5 @@ This is a car shop system which allows the users to create their own accounts an
 The project is based on Java and Gradle tool. The GUI (user interface) is based on Java Swing GUI.
 # Run
 
-To run the application. Please download the project and go to the file: ca.mcgill.ecse.carshop/src/test/java/ca/mcgill/ecse/carshop/application/CarShopApplicationTest.java and run.
+To run the application. Please download the project and go to the file: `ca.mcgill.ecse.carshop/src/test/java/ca/mcgill/ecse/carshop/application/CarShopApplicationTest.java` 
+and run.
